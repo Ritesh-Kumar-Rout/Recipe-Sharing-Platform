@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-gray-900 font-sans antialiased selection:bg-primary selection:text-white transition-colors duration-300;
+  }
+  .dark body {
+    @apply bg-dark-background text-gray-100;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-[0_8px_32px_0_rgba(31,38,135,0.07)];
+  }
+  .dark .glass {
+    @apply bg-dark-surface/70 border-gray-700/50 shadow-[0_8px_32px_0_rgba(0,0,0,0.3)];
+  }
+  
+  .glass-card {
+    @apply glass rounded-2xl transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-6 py-2.5 rounded-xl font-medium transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-primary to-secondary text-white hover:shadow-lg hover:shadow-primary/30;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-gray-800 border-2 border-gray-200 hover:border-primary hover:text-primary dark:bg-dark-surface dark:text-gray-200 dark:border-gray-700 dark:hover:border-primary;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none;
+  }
+}
