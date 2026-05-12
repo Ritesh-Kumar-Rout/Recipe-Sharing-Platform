@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSettings, FiEdit2, FiGrid, FiBookmark, FiX, FiCheck } from 'react-icons/fi';
+import { FiSettings, FiEdit2, FiGrid, FiBookmark, FiX, FiCheck, FiHeart, FiMessageCircle } from 'react-icons/fi';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { RecipeCard } from '../components/recipe/RecipeCard';
@@ -9,7 +9,7 @@ import { useAppContext } from '../context/AppContext';
 
 export default function Profile() {
   const { userProfile, savedRecipes: savedIds, updateProfile } = useAppContext();
-  const [activeTab, setActiveTab] = useState<'my-recipes' | 'saved'>('my-recipes');
+  const [activeTab, setActiveTab] = useState<'posts' | 'my-recipes' | 'saved'>('posts');
   const [isEditing, setIsEditing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   
@@ -98,26 +98,36 @@ export default function Profile() {
 
       {/* Tabs */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="flex border-b border-gray-200 dark:border-gray-800 mb-8">
+        <div className="flex border-b border-gray-200 dark:border-gray-800 mb-8 justify-center gap-8 md:gap-16">
           <button
-            className={`flex items-center gap-2 pb-4 px-6 text-sm font-medium transition-colors border-b-2 ${
+            className={`flex items-center gap-2 pb-4 text-sm font-semibold uppercase tracking-wider transition-colors border-b-2 ${
+              activeTab === 'posts' 
+                ? 'border-primary text-gray-900 dark:text-white' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+            onClick={() => setActiveTab('posts' as any)}
+          >
+            <FiGrid size={18} /> Posts
+          </button>
+          <button
+            className={`flex items-center gap-2 pb-4 text-sm font-semibold uppercase tracking-wider transition-colors border-b-2 ${
               activeTab === 'my-recipes' 
-                ? 'border-primary text-primary' 
+                ? 'border-primary text-gray-900 dark:text-white' 
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
             onClick={() => setActiveTab('my-recipes')}
           >
-            <FiGrid size={18} /> My Recipes
+            <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg> Recipes
           </button>
           <button
-            className={`flex items-center gap-2 pb-4 px-6 text-sm font-medium transition-colors border-b-2 ${
+            className={`flex items-center gap-2 pb-4 text-sm font-semibold uppercase tracking-wider transition-colors border-b-2 ${
               activeTab === 'saved' 
-                ? 'border-primary text-primary' 
+                ? 'border-primary text-gray-900 dark:text-white' 
                 : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
             }`}
             onClick={() => setActiveTab('saved')}
           >
-            <FiBookmark size={18} /> Saved Recipes
+            <FiBookmark size={18} /> Saved
           </button>
         </div>
 
@@ -127,16 +137,31 @@ export default function Profile() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
-          {activeTab === 'my-recipes' 
-            ? myRecipes.map((recipe, idx) => (
-                <RecipeCard key={recipe.id} recipe={recipe} index={idx} />
-              ))
-            : savedRecipesList.map((recipe, idx) => (
-                <RecipeCard key={recipe.id} recipe={recipe} index={idx} />
-              ))
-          }
+          {activeTab === 'posts' ? (
+            <div className="grid grid-cols-3 gap-1 md:gap-4">
+              {[1, 2, 3, 4, 5, 6].map((idx) => (
+                <div key={idx} className="aspect-square relative group cursor-pointer bg-gray-100 dark:bg-gray-800">
+                  <img src={`https://images.unsplash.com/photo-${1500000000000 + idx * 1000}?auto=format&fit=crop&q=80&w=400`} alt="Post" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6">
+                    <span className="text-white font-bold flex items-center gap-2"><FiHeart size={20} className="fill-current" /> {100 + idx * 24}</span>
+                    <span className="text-white font-bold flex items-center gap-2"><FiMessageCircle size={20} className="fill-current" /> {10 + idx}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {activeTab === 'my-recipes' 
+                ? myRecipes.map((recipe, idx) => (
+                    <RecipeCard key={recipe.id} recipe={recipe} index={idx} />
+                  ))
+                : savedRecipesList.map((recipe, idx) => (
+                    <RecipeCard key={recipe.id} recipe={recipe} index={idx} />
+                  ))
+              }
+            </div>
+          )}
         </motion.div>
         
         {((activeTab === 'my-recipes' && myRecipes.length === 0) || 

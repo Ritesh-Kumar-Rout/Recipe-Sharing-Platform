@@ -3,11 +3,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiImage, FiPlus, FiTrash2, FiCheckCircle } from 'react-icons/fi';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 export default function AddRecipe() {
+  const [formData, setFormData] = useState({
+    title: '',
+    cookTime: '',
+    prepTime: '',
+    description: '',
+    category: ''
+  });
   const [ingredients, setIngredients] = useState(['', '', '']);
   const [steps, setSteps] = useState(['', '']);
   const [isLoading, setIsLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -15,6 +25,7 @@ export default function AddRecipe() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -37,18 +48,63 @@ export default function AddRecipe() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleIngredientChange = (index: number, value: string) => {
+    const newIngredients = [...ingredients];
+    newIngredients[index] = value;
+    setIngredients(newIngredients);
+  };
+
+  const handleStepChange = (index: number, value: string) => {
+    const newSteps = [...steps];
+    newSteps[index] = value;
+    setSteps(newSteps);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!imageFile) {
+      toast.error('Please upload a recipe image');
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const data = new FormData();
+      data.append('title', formData.title);
+      data.append('cookTime', formData.cookTime);
+      data.append('prepTime', formData.prepTime);
+      data.append('description', formData.description); // Currently unused by backend, but good to have
+      data.append('categories', formData.category);
+      data.append('ingredients', JSON.stringify(ingredients.filter(i => i.trim() !== '')));
+      data.append('steps', JSON.stringify(steps.filter(s => s.trim() !== '')));
+      data.append('image', imageFile);
+
+      const token = localStorage.getItem('adminToken');
+      const res = await api.post('/recipes', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (res.data.success) {
+        setIsSuccess(true);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Failed to upload recipe');
+    } finally {
       setIsLoading(false);
-      setIsSuccess(true);
-    }, 1500);
+    }
   };
 
   const resetForm = () => {
+    setImageFile(null);
     setImagePreview(null);
+    setFormData({ title: '', cookTime: '', prepTime: '', description: '', category: '' });
     setIngredients(['', '', '']);
     setSteps(['', '']);
     setIsSuccess(false);
@@ -102,16 +158,19 @@ export default function AddRecipe() {
 
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input label="Recipe Title" placeholder="E.g. Classic Margherita Pizza" required className="md:col-span-2" />
-            <Input label="Cooking Time" placeholder="E.g. 45 mins" required />
-            <Input label="Servings" placeholder="E.g. 4 people" type="number" required />
+            <Input name="title" value={formData.title} onChange={handleChange} label="Recipe Title" placeholder="E.g. Classic Margherita Pizza" required className="md:col-span-2" />
+            <Input name="prepTime" value={formData.prepTime} onChange={handleChange} label="Prep Time" placeholder="E.g. 15 mins" required />
+            <Input name="cookTime" value={formData.cookTime} onChange={handleChange} label="Cooking Time" placeholder="E.g. 45 mins" required />
+            <Input name="category" value={formData.category} onChange={handleChange} label="Category / Tags" placeholder="E.g. Italian, Dinner" className="md:col-span-2" required />
             <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Description (Optional)</label>
               <textarea 
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
                 className="w-full px-4 py-3 rounded-xl bg-white dark:bg-dark-surface border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all outline-none resize-none"
                 rows={4}
                 placeholder="Briefly describe your recipe..."
-                required
               />
             </div>
           </div>
@@ -125,7 +184,13 @@ export default function AddRecipe() {
             <div className="space-y-3">
               {ingredients.map((_, idx) => (
                 <div key={`ing-${idx}`} className="flex items-center gap-3">
-                  <Input placeholder={`Ingredient ${idx + 1}`} required className="flex-1" />
+                  <Input 
+                    placeholder={`Ingredient ${idx + 1}`} 
+                    value={ingredients[idx]}
+                    onChange={(e) => handleIngredientChange(idx, e.target.value)}
+                    required={idx === 0} 
+                    className="flex-1" 
+                  />
                   <button type="button" onClick={() => handleRemoveIngredient(idx)} className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
                     <FiTrash2 size={20} />
                   </button>
@@ -150,8 +215,10 @@ export default function AddRecipe() {
                     <textarea 
                       className="w-full bg-transparent border-none focus:ring-0 p-0 text-gray-800 dark:text-gray-200 resize-none outline-none"
                       rows={2}
+                      value={steps[idx]}
+                      onChange={(e) => handleStepChange(idx, e.target.value)}
                       placeholder={`Describe step ${idx + 1}...`}
-                      required
+                      required={idx === 0}
                     />
                   </div>
                   <button type="button" onClick={() => handleRemoveStep(idx)} className="text-gray-400 hover:text-red-500 transition-colors">

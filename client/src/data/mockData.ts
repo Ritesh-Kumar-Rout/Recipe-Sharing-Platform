@@ -17,6 +17,83 @@ export interface Recipe {
   ingredients: string[];
   steps: string[];
 }
+export interface SocialPost {
+  id: string;
+  user: {
+    name: string;
+    username: string;
+    avatar: string;
+    isVerified?: boolean;
+  };
+  image: string;
+  caption: string;
+  likes: number;
+  comments: number;
+  timeAgo: string;
+  isLikedByMe?: boolean;
+}
+
+export const MOCK_POSTS: SocialPost[] = [
+  {
+    id: 'p1',
+    user: {
+      name: 'Chef Maria',
+      username: 'chefmaria',
+      avatar: 'https://ui-avatars.com/api/?name=Chef+Maria&background=random',
+      isVerified: true,
+    },
+    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=1000',
+    caption: 'Just perfected my signature smoked ribs! The secret is in the 12-hour dry rub 🥩🔥 #bbq #meatlover #chefslife',
+    likes: 342,
+    comments: 28,
+    timeAgo: '2 hours ago',
+    isLikedByMe: false,
+  },
+  {
+    id: 'p2',
+    user: {
+      name: 'Emma Green',
+      username: 'emmagreen_eats',
+      avatar: 'https://ui-avatars.com/api/?name=Emma+Green&background=random',
+    },
+    image: 'https://images.unsplash.com/photo-1484723091798-dffc12259843?auto=format&fit=crop&q=80&w=1000',
+    caption: 'Sunday brunch situation 🥑🍞 Avocado toast with poached eggs and a sprinkle of chili flakes. Perfect start to the day!',
+    likes: 890,
+    comments: 45,
+    timeAgo: '5 hours ago',
+    isLikedByMe: true,
+  },
+  {
+    id: 'p3',
+    user: {
+      name: 'John Baker',
+      username: 'johnbaker',
+      avatar: 'https://ui-avatars.com/api/?name=John+Baker&background=random',
+    },
+    image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=1000',
+    caption: 'First attempt at a layered chocolate raspberry cake! 🍰 Need to work on my frosting skills but it tastes amazing. #baking #cake',
+    likes: 124,
+    comments: 12,
+    timeAgo: '8 hours ago',
+    isLikedByMe: false,
+  },
+  {
+    id: 'p4',
+    user: {
+      name: 'Sushi Lovers',
+      username: 'sushilovers',
+      avatar: 'https://ui-avatars.com/api/?name=Sushi+Lovers&background=random',
+      isVerified: true,
+    },
+    image: 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&q=80&w=1000',
+    caption: 'Fresh salmon nigiri straight from the Tsukiji market! 🍣✨ #sushi #japanesefood #fresh',
+    likes: 2156,
+    comments: 134,
+    timeAgo: '1 day ago',
+    isLikedByMe: false,
+  }
+];
+
 
 export const CATEGORIES = [
   { id: '1', name: 'Breakfast', icon: '🍳', color: 'bg-orange-100 text-orange-600' },

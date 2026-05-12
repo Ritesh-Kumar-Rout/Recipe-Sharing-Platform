@@ -2,9 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiSearch, FiLogOut } from 'react-icons/fi';
 import { Button } from '../ui/Button';
-import { useAppContext } from '../../context/AppContext';
-import { MOCK_RECIPES } from '../../data/mockData';
-import logoImg from '../../assets/logo.png';
+import { BrandLogo } from '../ui/BrandLogo';
+import { useAuthStore } from '../../store/useAuthStore';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -14,7 +13,7 @@ export function Navbar() {
   const searchRef = useRef<HTMLDivElement>(null);
   
   const location = useLocation();
-  const { userProfile, isLoggedIn, logout } = useAppContext();
+  const { user, isAuthenticated, logout, openAuthModal } = useAuthStore();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -41,13 +40,13 @@ export function Navbar() {
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'Explore', path: '/feed' },
+    { name: 'Explore', path: '/explore' },
+    { name: 'Feed', path: '/feed' },
     { name: 'About', path: '/about' },
   ];
 
-  const searchResults = searchQuery.length > 1 
-    ? MOCK_RECIPES.filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase()) || r.category.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 5)
-    : [];
+  // Removed MOCK_RECIPES live search for now or keep empty array
+  const searchResults: any[] = [];
 
   return (
     <nav
@@ -58,11 +57,8 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <img src={logoImg} alt="YumCircle Logo" className="w-10 h-10 object-contain drop-shadow-md" />
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent tracking-tight">
-              YumCircle
-            </span>
+          <Link to="/" className="outline-none">
+            <BrandLogo />
           </Link>
 
           {/* Desktop Nav */}
@@ -129,14 +125,11 @@ export function Navbar() {
                 )}
               </div>
 
-              {isLoggedIn ? (
+              {isAuthenticated ? (
                 <>
-                  <Link to="/add-recipe">
-                    <Button variant="primary" size="sm">Add Recipe</Button>
-                  </Link>
                   <div className="flex items-center gap-2">
                     <Link to="/profile">
-                      <img src={userProfile?.avatar || ''} alt="Profile" className="w-10 h-10 rounded-full border-2 border-primary object-cover shadow-sm hover:scale-105 transition-transform" />
+                      <img src={user?.profileImage || 'https://res.cloudinary.com/demo/image/upload/v1566427384/sample.jpg'} alt="Profile" className="w-10 h-10 rounded-full border-2 border-primary object-cover shadow-sm hover:scale-105 transition-transform" />
                     </Link>
                     <button onClick={logout} title="Logout" className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                       <FiLogOut size={18} />
@@ -145,12 +138,8 @@ export function Navbar() {
                 </>
               ) : (
                 <div className="flex items-center gap-3">
-                  <Link to="/login">
-                    <Button variant="ghost" size="sm">Log In</Button>
-                  </Link>
-                  <Link to="/signup">
-                    <Button variant="primary" size="sm">Sign Up</Button>
-                  </Link>
+                  <Button variant="ghost" size="sm" onClick={() => openAuthModal()}>Log In</Button>
+                  <Button variant="primary" size="sm" onClick={() => openAuthModal()}>Sign Up</Button>
                 </div>
               )}
             </div>
@@ -189,11 +178,8 @@ export function Navbar() {
               </Link>
             ))}
             <div className="pt-4 flex flex-col gap-3">
-              {isLoggedIn ? (
+              {isAuthenticated ? (
                 <>
-                  <Link to="/add-recipe" className="w-full">
-                    <Button variant="primary" className="w-full">Add Recipe</Button>
-                  </Link>
                   <Link to="/profile" className="w-full">
                     <Button variant="outline" className="w-full">Profile</Button>
                   </Link>
@@ -201,12 +187,8 @@ export function Navbar() {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="w-full">
-                    <Button variant="outline" className="w-full">Log In</Button>
-                  </Link>
-                  <Link to="/signup" className="w-full">
-                    <Button variant="primary" className="w-full">Sign Up</Button>
-                  </Link>
+                  <Button variant="outline" className="w-full" onClick={() => openAuthModal()}>Log In</Button>
+                  <Button variant="primary" className="w-full" onClick={() => openAuthModal()}>Sign Up</Button>
                 </>
               )}
             </div>
