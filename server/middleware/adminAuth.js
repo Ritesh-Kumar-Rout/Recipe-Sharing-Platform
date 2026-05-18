@@ -14,6 +14,18 @@ exports.protectAdmin = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET);
+    
+    // Check for hardcoded admin first
+    if (decoded.id === 'hardcoded_admin_id' || decoded.id === '000000000000000000000000') {
+      req.admin = {
+        _id: '000000000000000000000000',
+        username: 'System Admin',
+        email: 'rasmi22@gmail.com',
+        role: 'superadmin'
+      };
+      return next();
+    }
+
     req.admin = await Admin.findById(decoded.id);
     if (!req.admin) {
       return res.status(401).json({ success: false, error: 'Admin not found' });

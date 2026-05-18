@@ -1,18 +1,37 @@
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiUser, FiArrowRight } from 'react-icons/fi';
 import { Button } from '../components/ui/Button';
-
 import { Link, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
+import { useState } from 'react';
+import { useAuthStore } from '../store/useAuthStore';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 export default function Signup() {
-  const { login } = useAppContext();
+  const { login } = useAuthStore();
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login();
-    navigate('/profile');
+    setIsLoading(true);
+    try {
+      const res = await api.post('/auth/signup', formData);
+      if (res.data.success) {
+        toast.success('Account created! Logging you in...');
+        // Usually signup returns token too or you can just login after signup
+        const loginRes = await api.post('/auth/login', { email: formData.email, password: formData.password });
+        if (loginRes.data.success) {
+          login(loginRes.data.user, loginRes.data.token);
+          navigate('/profile');
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Signup failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,7 +70,9 @@ export default function Signup() {
                 </div>
                 <input 
                   type="text" 
-                  placeholder="Full Name" 
+                  placeholder="Username" 
+                  value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
                   required 
                   className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white placeholder-white/50 transition-all"
                 />
@@ -64,6 +85,8 @@ export default function Signup() {
                 <input 
                   type="email" 
                   placeholder="Email Address" 
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                   required 
                   className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white placeholder-white/50 transition-all"
                 />
@@ -76,13 +99,20 @@ export default function Signup() {
                 <input 
                   type="password" 
                   placeholder="Password" 
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
                   required 
                   className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white placeholder-white/50 transition-all"
                 />
               </div>
             </div>
 
-            <Button type="submit" className="w-full h-14 text-lg mt-6 shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]" rightIcon={<FiArrowRight />}>
+            <Button 
+              type="submit" 
+              isLoading={isLoading}
+              className="w-full h-14 text-lg mt-6 shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]" 
+              rightIcon={<FiArrowRight />}
+            >
               Sign Up
             </Button>
           </form>

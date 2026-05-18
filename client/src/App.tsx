@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'r
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AppProvider } from './context/AppContext';
 import AuthModal from './components/auth/AuthModal';
 import { Toaster } from 'react-hot-toast';
 
@@ -87,11 +86,9 @@ const MainApp = () => {
 
 function App() {
   return (
-    <AppProvider>
-      <Router>
-        <MainApp />
-      </Router>
-    </AppProvider>
+    <Router>
+      <MainApp />
+    </Router>
   );
 }
 

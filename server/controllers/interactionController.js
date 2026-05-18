@@ -3,6 +3,7 @@ const Comment = require('../models/Comment');
 const Follower = require('../models/Follower');
 const User = require('../models/User');
 const Post = require('../models/Post');
+const { sendNotification } = require('../sockets/notificationHandler');
 
 // @desc    Toggle Like on Post
 // @route   POST /api/interactions/like/:postId
@@ -20,7 +21,18 @@ exports.toggleLike = async (req, res, next) => {
       res.status(200).json({ success: true, message: 'Unliked post' });
     } else {
       await Like.create({ user: userId, post: postId });
-      await Post.findByIdAndUpdate(postId, { $inc: { likesCount: 1 } });
+      const post = await Post.findByIdAndUpdate(postId, { $inc: { likesCount: 1 } });
+      
+      // Send Notification
+      if (post) {
+        await sendNotification({
+          senderId: userId,
+          recipientId: post.user,
+          type: 'like',
+          postId: postId
+        });
+      }
+      
       res.status(200).json({ success: true, message: 'Liked post' });
     }
   } catch (err) {
@@ -43,7 +55,17 @@ exports.addComment = async (req, res, next) => {
       parentComment: parentComment || null
     });
 
-    await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
+    const post = await Post.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } });
+
+    // Send Notification
+    if (post) {
+      await sendNotification({
+        senderId: req.user.id,
+        recipientId: post.user,
+        type: 'comment',
+        postId: postId
+      });
+    }
 
     res.status(201).json({ success: true, data: comment });
   } catch (err) {
@@ -74,8 +96,35 @@ exports.toggleFollow = async (req, res, next) => {
       await Follower.create({ follower: followerId, following: followingId });
       await User.findByIdAndUpdate(followerId, { $inc: { followingCount: 1 } });
       await User.findByIdAndUpdate(followingId, { $inc: { followersCount: 1 } });
+      
+      // Send Notification
+      await sendNotification({
+        senderId: followerId,
+        recipientId: followingId,
+        type: 'follow'
+      });
+      
       res.status(200).json({ success: true, message: 'Followed user' });
     }
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Check Follow Status
+// @route   GET /api/interactions/check-follow/:userId
+// @access  Private
+exports.checkFollow = async (req, res, next) => {
+  try {
+    const followerId = req.user.id;
+    const followingId = req.params.userId;
+
+    if (followerId === followingId) {
+      return res.status(200).json({ success: true, isFollowing: false });
+    }
+
+    const existingFollow = await Follower.findOne({ follower: followerId, following: followingId });
+    res.status(200).json({ success: true, isFollowing: !!existingFollow });
   } catch (err) {
     next(err);
   }

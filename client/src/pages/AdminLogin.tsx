@@ -8,6 +8,12 @@ const AdminLogin = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  
+  React.useEffect(() => {
+    if (localStorage.getItem('adminToken')) {
+      navigate('/admin/dashboard');
+    }
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

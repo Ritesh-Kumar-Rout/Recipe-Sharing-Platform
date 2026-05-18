@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 export default function AddRecipe() {
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ export default function AddRecipe() {
     description: '',
     category: ''
   });
+  const navigate = useNavigate();
   const [ingredients, setIngredients] = useState(['', '', '']);
   const [steps, setSteps] = useState(['', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -92,7 +94,8 @@ export default function AddRecipe() {
       });
 
       if (res.data.success) {
-        setIsSuccess(true);
+        toast.success("Recipe Added Successfully");
+        navigate('/admin/dashboard');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.error || 'Failed to upload recipe');
@@ -107,7 +110,6 @@ export default function AddRecipe() {
     setFormData({ title: '', cookTime: '', prepTime: '', description: '', category: '' });
     setIngredients(['', '', '']);
     setSteps(['', '']);
-    setIsSuccess(false);
   };
 
   return (
@@ -231,7 +233,7 @@ export default function AddRecipe() {
 
           {/* Submit */}
           <div className="pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-end gap-4">
-            <Button type="button" variant="outline" size="lg">Cancel</Button>
+            <Button type="button" variant="outline" size="lg" onClick={() => navigate('/admin/dashboard')}>Cancel</Button>
             <Button type="submit" size="lg" className="px-10" isLoading={isLoading}>
               Publish Recipe
             </Button>

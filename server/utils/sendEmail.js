@@ -3,7 +3,9 @@ const nodemailer = require('nodemailer');
 const sendEmail = async (options) => {
   // Create a transporter
   const transporter = nodemailer.createTransport({
-    service: 'gmail', // You can change this or use host/port
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: process.env.EMAIL_PORT || 587,
+    secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
@@ -12,15 +14,21 @@ const sendEmail = async (options) => {
 
   // Define the email options
   const mailOptions = {
-    from: `YumCircle <${process.env.EMAIL_USER}>`,
+    from: `${process.env.FROM_NAME || 'YumCircle'} <${process.env.EMAIL_USER}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
-    html: options.html,
+    html: options.html || options.message,
   };
 
-  // Actually send the email
-  await transporter.sendMail(mailOptions);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent: %s', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Email send error:', error);
+    throw error;
+  }
 };
 
 module.exports = sendEmail;

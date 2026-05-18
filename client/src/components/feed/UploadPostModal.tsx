@@ -16,6 +16,42 @@ export const UploadPostModal: React.FC<UploadPostModalProps> = ({ isOpen, onClos
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hashtagSuggestions, setHashtagSuggestions] = useState<string[]>([]);
+  const [activeInput, setActiveInput] = useState<'caption' | 'hashtags' | null>(null);
+
+  const POPULAR_HASHTAGS = ['foodie', 'burger', 'delicious', 'chicken', 'chinese', 'pizza', 'vegan', 'healthy', 'breakfast', 'dinner', 'dessert', 'baking', 'pasta', 'salad', 'homemade', 'yummy', 'chef', 'recipe'];
+
+  const handleInputChange = (val: string, type: 'caption' | 'hashtags') => {
+    if (type === 'caption') setCaption(val);
+    else setHashtags(val);
+    setActiveInput(type);
+
+    const words = val.split(/[\s\n]+/);
+    const lastWord = words[words.length - 1];
+
+    if (lastWord.startsWith('#') && lastWord.length > 1) {
+      const search = lastWord.slice(1).toLowerCase();
+      const suggestions = POPULAR_HASHTAGS.filter(tag => tag.includes(search));
+      setHashtagSuggestions(suggestions);
+    } else {
+      setHashtagSuggestions([]);
+    }
+  };
+
+  const addSuggestion = (tag: string) => {
+    if (activeInput === 'caption') {
+      const lastWordMatch = caption.match(/#[^\s\n]*$/);
+      if (lastWordMatch) {
+        setCaption(caption.slice(0, lastWordMatch.index) + `#${tag} `);
+      }
+    } else if (activeInput === 'hashtags') {
+      const lastWordMatch = hashtags.match(/#[^\s\n]*$/);
+      if (lastWordMatch) {
+        setHashtags(hashtags.slice(0, lastWordMatch.index) + `#${tag} `);
+      }
+    }
+    setHashtagSuggestions([]);
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -176,7 +212,8 @@ export const UploadPostModal: React.FC<UploadPostModalProps> = ({ isOpen, onClos
                   </label>
                   <textarea 
                     value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value, 'caption')}
+                    onFocus={() => setActiveInput('caption')}
                     placeholder="Write a catchy caption..."
                     className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none resize-none h-28 text-gray-900 dark:text-white"
                   />
@@ -190,11 +227,29 @@ export const UploadPostModal: React.FC<UploadPostModalProps> = ({ isOpen, onClos
                   <input 
                     type="text"
                     value={hashtags}
-                    onChange={(e) => setHashtags(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value, 'hashtags')}
+                    onFocus={() => setActiveInput('hashtags')}
                     placeholder="e.g. #foodie #burger #delicious"
                     className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-gray-900 dark:text-white"
                   />
                 </div>
+
+                {/* Suggestions Box */}
+                {hashtagSuggestions.length > 0 && (
+                  <div className="flex gap-2 flex-wrap p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
+                    <span className="text-xs text-gray-500 w-full mb-1">Suggestions:</span>
+                    {hashtagSuggestions.map(tag => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => addSuggestion(tag)}
+                        className="text-sm px-3 py-1 bg-white dark:bg-gray-800 text-orange-500 border border-orange-500/30 rounded-full hover:bg-orange-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        #{tag}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
               </form>
             </div>

@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema({
   },
   profileImage: {
     type: String,
-    default: 'https://res.cloudinary.com/demo/image/upload/v1566427384/sample.jpg' // Default avatar
+    default: '' // Default to empty to allow Avatar component to render initial
   },
   bio: {
     type: String,
@@ -53,13 +53,17 @@ const userSchema = new mongoose.Schema({
   resetPasswordOTPExpires: {
     type: Date,
     select: false
+  },
+  refreshToken: {
+    type: String,
+    select: false
   }
 }, { timestamps: true });
 
 // Encrypt password using bcrypt
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function() {
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);

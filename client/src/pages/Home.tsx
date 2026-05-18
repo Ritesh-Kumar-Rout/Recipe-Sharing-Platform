@@ -4,10 +4,14 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { RecipeCard } from '../components/recipe/RecipeCard';
 import { CategoryCard } from '../components/recipe/CategoryCard';
-import { MOCK_RECIPES, CATEGORIES } from '../data/mockData';
+import { CATEGORIES } from '../data/mockData';
+import { RecipeCardSkeleton } from '../components/ui/Skeleton';
+import api from '../api/axios';
+import { SEO } from '../components/seo/SEO';
 
 export default function Home() {
-  const featuredRecipes = MOCK_RECIPES.slice(0, 3);
+  const [featuredRecipes, setFeaturedRecipes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const heroImages = [
     "https://images.unsplash.com/photo-1495195134817-a1a18cd2aead?auto=format&fit=crop&q=80&w=2000",
     "https://images.unsplash.com/photo-1546069901-ba959aab5db4?auto=format&fit=crop&q=80&w=2000",
@@ -16,6 +20,20 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
+    const fetchFeatured = async () => {
+      try {
+        const res = await api.get('/recipes/popular');
+        if (res.data.success) {
+          setFeaturedRecipes(res.data.data.slice(0, 3));
+        }
+      } catch (error) {
+        console.error("Failed to fetch featured recipes");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFeatured();
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroImages.length);
     }, 5000);
@@ -23,8 +41,13 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="w-full">
-      {/* Premium Hero Section */}
+    <div className="min-h-screen bg-white dark:bg-dark-background">
+      <SEO 
+        title="Home" 
+        description="Join YumCircle, the ultimate food community. Share recipes, explore culinary delights, and connect with food lovers worldwide."
+        keywords="recipes, food community, cooking, social media for foodies"
+      />
+      {/* Hero Section */}
       <section className="relative min-h-[90vh] flex flex-col lg:flex-row items-center justify-center overflow-hidden bg-black pt-20 lg:pt-0">
         {/* Background Slider */}
         <div className="absolute inset-0 z-0">
@@ -187,9 +210,13 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredRecipes.map((recipe, idx) => (
-              <RecipeCard key={recipe.id} recipe={recipe} index={idx} />
-            ))}
+            {isLoading ? (
+              [1, 2, 3].map((i) => <RecipeCardSkeleton key={i} />)
+            ) : (
+              featuredRecipes.map((recipe, idx) => (
+                <RecipeCard key={recipe.id || recipe._id} recipe={recipe} index={idx} />
+              ))
+            )}
           </div>
         </div>
       </section>

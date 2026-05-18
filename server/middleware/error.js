@@ -3,7 +3,9 @@ const errorHandler = (err, req, res, next) => {
   error.message = err.message;
 
   // Log to console for dev
-  console.log(err);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err);
+  }
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -21,14 +23,26 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(val => val.message);
+    const message = Object.values(err.errors).map(val => val.message).join(', ');
     error = new Error(message);
     error.statusCode = 400;
   }
 
+  // JWT Errors
+  if (err.name === 'JsonWebTokenError') {
+    error = new Error('Invalid token. Please log in again.');
+    error.statusCode = 401;
+  }
+  
+  if (err.name === 'TokenExpiredError') {
+    error = new Error('Your session has expired. Please log in again.');
+    error.statusCode = 401;
+  }
+
   res.status(error.statusCode || 500).json({
     success: false,
-    error: error.message || 'Server Error'
+    error: error.message || 'Server Error',
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack
   });
 };
 

@@ -1,33 +1,63 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiClock, FiHeart, FiShare2, FiMessageCircle, FiBookmark } from 'react-icons/fi';
+import { FiClock, FiHeart, FiShare2, FiMessageCircle, FiBookmark, FiChevronLeft } from 'react-icons/fi';
 import { LuChefHat } from 'react-icons/lu';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { MOCK_RECIPES } from '../data/mockData';
-import { useAppContext } from '../context/AppContext';
+import { useAuthStore } from '../store/useAuthStore';
+import { useState, useEffect } from 'react';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
+import { SEO } from '../components/seo/SEO';
 
 export default function RecipeDetails() {
   const { id } = useParams<{ id: string }>();
-  // For demonstration, use the first recipe if not found
-  const recipe = MOCK_RECIPES.find(r => r.id === id) || MOCK_RECIPES[0];
+  const navigate = useNavigate();
+  const [recipe, setRecipe] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const { isLoggedIn, likedRecipes, savedRecipes, toggleLikeRecipe, toggleSaveRecipe } = useAppContext();
-  const isLiked = likedRecipes.includes(recipe.id);
-  const isSaved = savedRecipes.includes(recipe.id);
+  const { isAuthenticated, likedRecipes, savedRecipes, toggleLikeRecipe, toggleSaveRecipe, openAuthModal } = useAuthStore();
+  
+  useEffect(() => {
+    const fetchRecipe = async () => {
+      try {
+        const res = await api.get(`/recipes/${id}`);
+        if (res.data.success) {
+          setRecipe(res.data.data);
+        }
+      } catch (error) {
+        toast.error("Recipe not found");
+        navigate('/explore');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRecipe();
+  }, [id]);
+
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-bold text-2xl animate-pulse">Loading Recipe...</div>;
+  if (!recipe) return null;
+
+  const isLiked = likedRecipes.includes(recipe._id);
+  const isSaved = savedRecipes.includes(recipe._id);
 
   const handleLike = () => {
-    if (!isLoggedIn) return alert("Please log in to like a recipe!");
-    toggleLikeRecipe(recipe.id);
+    if (!isAuthenticated) return openAuthModal();
+    toggleLikeRecipe(recipe._id);
   };
 
   const handleSave = () => {
-    if (!isLoggedIn) return alert("Please log in to save a recipe!");
-    toggleSaveRecipe(recipe.id);
+    if (!isAuthenticated) return openAuthModal();
+    toggleSaveRecipe(recipe._id);
   };
 
   return (
     <div className="pb-20">
+      <SEO 
+        title={recipe.title} 
+        description={recipe.description || `Learn how to make ${recipe.title} on YumCircle.`}
+        image={recipe.image}
+      />
       {/* Recipe Banner */}
       <div className="relative h-[60vh] w-full bg-gray-200 dark:bg-gray-800">
         <img 
@@ -37,6 +67,18 @@ export default function RecipeDetails() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background dark:from-dark-background via-black/30 to-black/10" />
         
+        <div className="absolute top-24 left-4 sm:left-8 z-10">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => navigate(-1)} 
+            className="bg-black/20 backdrop-blur-md border-white/20 text-white hover:bg-black/40"
+            leftIcon={<FiChevronLeft />}
+          >
+            Back
+          </Button>
+        </div>
+
         <div className="absolute bottom-0 left-0 right-0 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
@@ -44,7 +86,7 @@ export default function RecipeDetails() {
             transition={{ duration: 0.6 }}
           >
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/20 text-white backdrop-blur-md mb-4 text-sm font-semibold uppercase tracking-wider border border-white/20">
-              {recipe.category}
+              {recipe.categories?.[0] || recipe.category}
             </span>
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
               {recipe.title}
@@ -52,16 +94,16 @@ export default function RecipeDetails() {
             
             <div className="flex flex-wrap items-center gap-6 text-white/90">
               <div className="flex items-center gap-3">
-                <img src={recipe.author.avatar} alt={recipe.author.name} className="w-10 h-10 rounded-full border-2 border-white/50" />
-                <span className="font-medium text-lg">{recipe.author.name}</span>
+                <img src={recipe.admin?.profileImage || "https://res.cloudinary.com/demo/image/upload/v1566427384/sample.jpg"} alt={recipe.admin?.username} className="w-10 h-10 rounded-full border-2 border-white/50 object-cover" />
+                <span className="font-medium text-lg">{recipe.admin?.username || 'Admin'}</span>
               </div>
               <div className="hidden sm:block h-6 w-px bg-white/30" />
               <div className="flex items-center gap-2 text-lg">
-                <FiClock /> <span>{recipe.time}</span>
+                <FiClock /> <span>{recipe.cookTime || recipe.time}</span>
               </div>
               <div className="hidden sm:block h-6 w-px bg-white/30" />
               <div className="flex items-center gap-2 text-lg">
-                <LuChefHat /> <span>{recipe.difficulty}</span>
+                <LuChefHat /> <span>{recipe.difficulty || 'Medium'}</span>
               </div>
             </div>
           </motion.div>
@@ -71,8 +113,8 @@ export default function RecipeDetails() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         <div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-gray-200 dark:border-gray-800 mb-12">
           <div className="flex items-center gap-6 text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-2"><FiHeart className={isLiked ? "fill-red-500 text-red-500" : ""} size={20} /> {recipe.likes + (isLiked ? 1 : 0)} Likes</span>
-            <span className="flex items-center gap-2"><FiMessageCircle size={20} /> {recipe.comments} Comments</span>
+            <span className="flex items-center gap-2"><FiHeart className={isLiked ? "fill-red-500 text-red-500" : ""} size={20} /> {(recipe.likesCount || 0) + (isLiked ? 1 : 0)} Likes</span>
+            <span className="flex items-center gap-2"><FiMessageCircle size={20} /> {recipe.commentsCount || 0} Comments</span>
           </div>
           
           <div className="flex gap-3">

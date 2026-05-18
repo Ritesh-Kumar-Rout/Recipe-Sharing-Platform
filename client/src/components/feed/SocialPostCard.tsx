@@ -1,10 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHeart, FiMessageCircle, FiSend, FiBookmark, FiMoreHorizontal } from 'react-icons/fi';
 import { FaHeart } from 'react-icons/fa';
 import api from '../../api/axios';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '../../store/useAuthStore';
+import { Avatar } from '../ui/Avatar';
+import toast from 'react-hot-toast';
 
 interface SocialPostCardProps {
   post: any;
@@ -17,8 +19,36 @@ export function SocialPostCard({ post }: SocialPostCardProps) {
   const [likeCount, setLikeCount] = useState(post.likesCount || likesArray.length);
   const [showHeart, setShowHeart] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
   
   const lastTapTime = useRef<number>(0);
+
+  useEffect(() => {
+    if (user && post.user?._id && user._id !== post.user._id) {
+      api.get(`/interactions/check-follow/${post.user._id}`).then(res => {
+        if (res.data.success) {
+          setIsFollowing(res.data.isFollowing);
+        }
+      }).catch(() => {});
+    }
+  }, [user, post.user?._id]);
+
+  const handleFollowToggle = async () => {
+    if (!user) return toast.error('Please log in to follow');
+    setIsFollowLoading(true);
+    try {
+      const res = await api.post(`/interactions/follow/${post.user._id}`);
+      if (res.data.success) {
+        setIsFollowing(!isFollowing);
+        toast.success(res.data.message);
+      }
+    } catch (error) {
+      toast.error('Failed to update follow status');
+    } finally {
+      setIsFollowLoading(false);
+    }
+  };
 
   const handleLike = async () => {
     setIsLiked(!isLiked);
@@ -56,16 +86,36 @@ export function SocialPostCard({ post }: SocialPostCardProps) {
     lastTapTime.current = now;
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Check out this post on YumCircle',
+      text: post.caption || 'Awesome post!',
+      url: window.location.origin + `/posts/${post._id}`
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (error) {
+        console.log('Error sharing', error);
+      }
+    } else {
+      navigator.clipboard.writeText(shareData.url);
+      toast.success('Link copied to clipboard!');
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden mb-8 break-inside-avoid">
       {/* Post Header */}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <img 
-              src={post.user?.profileImage || 'https://res.cloudinary.com/demo/image/upload/v1566427384/sample.jpg'} 
-              alt={post.user?.username} 
-              className="w-10 h-10 rounded-full object-cover border border-gray-200 dark:border-gray-700"
+            <Avatar 
+              src={post.user?.profileImage} 
+              name={post.user?.username} 
+              size="md" 
+              className="border border-gray-200 dark:border-gray-700" 
             />
             {post.user?.isVerified && (
               <span className="absolute -bottom-1 -right-1 bg-blue-500 text-white text-[10px] p-0.5 rounded-full border-2 border-white dark:border-dark-surface">
@@ -80,9 +130,20 @@ export function SocialPostCard({ post }: SocialPostCardProps) {
             <p className="text-xs text-gray-500">{post.user?.name || ''}</p>
           </div>
         </div>
-        <button className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
-          <FiMoreHorizontal size={20} />
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          {user && post.user?._id && user._id !== post.user._id && (
+            <button 
+              onClick={handleFollowToggle}
+              disabled={isFollowLoading}
+              className={`text-[11px] font-bold px-3 py-1.5 rounded-full transition-colors ${isFollowing ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700' : 'bg-orange-500 text-white hover:bg-orange-600'}`}
+            >
+              {isFollowLoading ? '...' : isFollowing ? 'Following' : 'Follow'}
+            </button>
+          )}
+          <button className="text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+            <FiMoreHorizontal size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Post Image with Double Tap */}
@@ -126,7 +187,7 @@ export function SocialPostCard({ post }: SocialPostCardProps) {
             <button className="text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               <FiMessageCircle size={24} />
             </button>
-            <button className="text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+            <button onClick={handleShare} className="text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               <FiSend size={24} />
             </button>
           </div>
@@ -145,16 +206,25 @@ export function SocialPostCard({ post }: SocialPostCardProps) {
         </p>
 
         {/* Caption */}
-        <div className="text-sm text-gray-900 dark:text-white mb-2">
+        <div className="text-sm text-gray-900 dark:text-white mb-2 break-words">
           <span className="font-semibold mr-2">{post.user?.username}</span>
           <span className="text-gray-800 dark:text-gray-200">
             {post.caption?.split(' ').map((word: string, i: number) => {
               if (word.startsWith('#')) {
-                return <span key={i} className="text-orange-500 hover:underline cursor-pointer"> {word} </span>;
+                return <span key={`cap-${i}`} className="text-orange-500 hover:underline cursor-pointer"> {word} </span>;
               }
               return word + ' ';
             })}
           </span>
+          {post.hashtags && post.hashtags.length > 0 && (
+            <div className="mt-1">
+              {post.hashtags.map((tag: string, i: number) => (
+                <span key={`hash-${i}`} className="text-orange-500 hover:underline cursor-pointer mr-1">
+                  {tag.startsWith('#') ? tag : `#${tag}`}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Comments Count */}

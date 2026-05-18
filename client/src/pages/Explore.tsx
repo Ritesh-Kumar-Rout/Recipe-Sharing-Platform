@@ -5,13 +5,18 @@ import { FiSearch } from 'react-icons/fi';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { RecipeCard } from '../components/recipe/RecipeCard';
-import { MOCK_RECIPES, CATEGORIES } from '../data/mockData';
+import { CATEGORIES } from '../data/mockData';
+import { RecipeCardSkeleton } from '../components/ui/Skeleton';
+import api from '../api/axios';
+import { SEO } from '../components/seo/SEO';
 
 export default function Explore() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const urlCategory = searchParams.get('category');
 
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>(urlCategory || 'All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'popular'>('latest');
@@ -22,18 +27,37 @@ export default function Explore() {
     }
   }, [urlCategory]);
 
-  const filteredRecipes = [...MOCK_RECIPES].filter(recipe => {
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      setIsLoading(true);
+      try {
+        const endpoint = sortBy === 'popular' ? '/recipes/popular' : '/recipes/latest';
+        const res = await api.get(endpoint);
+        if (res.data.success) {
+          setRecipes(res.data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch recipes");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRecipes();
+  }, [sortBy]);
+
+  const filteredRecipes = recipes.filter(recipe => {
     const matchesSearch = recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          recipe.ingredients.some(i => i.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCategory = activeCategory === 'All' ? true : recipe.category === activeCategory;
+                          (recipe.ingredients && recipe.ingredients.some((i: string) => i.toLowerCase().includes(searchQuery.toLowerCase())));
+    const matchesCategory = activeCategory === 'All' ? true : (recipe.categories && recipe.categories.includes(activeCategory));
     return matchesSearch && matchesCategory;
-  }).sort((a, b) => {
-    if (sortBy === 'popular') return b.likes - a.likes;
-    return b.id.localeCompare(a.id);
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-24">
+      <SEO 
+        title="Explore Recipes" 
+        description="Discover thousands of trending and latest recipes from the YumCircle community. Filter by category, ingredients, and more."
+      />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
         <div>
           <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
@@ -96,9 +120,11 @@ export default function Explore() {
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
       >
         <AnimatePresence mode="popLayout">
-          {filteredRecipes.length > 0 ? (
+          {isLoading ? (
+            [1, 2, 3, 4, 5, 6, 7, 8].map((i) => <RecipeCardSkeleton key={i} />)
+          ) : filteredRecipes.length > 0 ? (
             filteredRecipes.map((recipe, idx) => (
-              <RecipeCard key={recipe.id} recipe={recipe} index={idx} />
+              <RecipeCard key={recipe._id || recipe.id} recipe={recipe} index={idx} />
             ))
           ) : (
             <motion.div 

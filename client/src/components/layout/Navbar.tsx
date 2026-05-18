@@ -1,24 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiMenu, FiX, FiSearch, FiLogOut } from 'react-icons/fi';
+import { FiMenu, FiX, FiSearch, FiLogOut, FiBell } from 'react-icons/fi';
 import { Button } from '../ui/Button';
 import { BrandLogo } from '../ui/BrandLogo';
+import { Avatar } from '../ui/Avatar';
 import { useAuthStore } from '../../store/useAuthStore';
+import api from '../../api/axios';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState<{ recipes: any[], users: any[] }>({ recipes: [], users: [] });
   const searchRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
   
   const location = useLocation();
-  const { user, isAuthenticated, logout, openAuthModal } = useAuthStore();
+  const { user, isAuthenticated, logout, openAuthModal, unreadNotifications } = useAuthStore();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearch(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -45,8 +54,24 @@ export function Navbar() {
     { name: 'About', path: '/about' },
   ];
 
-  // Removed MOCK_RECIPES live search for now or keep empty array
-  const searchResults: any[] = [];
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery.trim().length > 0) {
+        try {
+          const res = await api.get(`/search?q=${searchQuery}`);
+          if (res.data.success) {
+            setSearchResults({ recipes: res.data.recipes, users: res.data.users });
+          }
+        } catch (error) {
+          console.error('Search error', error);
+        }
+      } else {
+        setSearchResults({ recipes: [], users: [] });
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
 
   return (
     <nav
@@ -99,26 +124,49 @@ export function Navbar() {
                 </div>
                 
                 {/* Search Dropdown */}
-                {showSearch && searchResults.length > 0 && (
-                  <div className="absolute top-12 left-0 w-80 bg-white dark:bg-dark-surface rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-3 z-50 animate-fade-in overflow-hidden">
-                    <h4 className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Recipes & Categories</h4>
-                    {searchResults.map(recipe => (
-                      <Link 
-                        key={recipe.id} 
-                        to={`/recipe/${recipe.id}`}
-                        onClick={() => { setShowSearch(false); setSearchQuery(''); }}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-dark-background transition-colors"
-                      >
-                        <img src={recipe.image} alt={recipe.title} className="w-12 h-12 rounded-lg object-cover shadow-sm" />
-                        <div className="flex-1 overflow-hidden">
-                          <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{recipe.title}</p>
-                          <p className="text-xs text-primary font-medium">{recipe.category}</p>
-                        </div>
-                      </Link>
-                    ))}
+                {showSearch && (searchResults.recipes.length > 0 || searchResults.users.length > 0) && (
+                  <div className="absolute top-12 left-0 w-80 bg-white dark:bg-dark-surface rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-3 z-50 animate-fade-in overflow-hidden max-h-96 overflow-y-auto">
+                    {searchResults.recipes.length > 0 && (
+                      <>
+                        <h4 className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-1">Recipes</h4>
+                        {searchResults.recipes.map(recipe => (
+                          <Link 
+                            key={`recipe-${recipe._id}`} 
+                            to={`/recipe/${recipe._id}`}
+                            onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-dark-background transition-colors"
+                          >
+                            <img src={recipe.image} alt={recipe.title} className="w-12 h-12 rounded-lg object-cover shadow-sm" />
+                            <div className="flex-1 overflow-hidden">
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{recipe.title}</p>
+                              <p className="text-xs text-primary font-medium">{recipe.categories?.[0] || 'Recipe'}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </>
+                    )}
+                    {searchResults.users.length > 0 && (
+                      <>
+                        <h4 className="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-3 border-t border-gray-100 dark:border-gray-800 pt-3">Users</h4>
+                        {searchResults.users.map(u => (
+                          <Link 
+                            key={`user-${u._id}`} 
+                            to={`/profile/${u.username}`}
+                            onClick={() => { setShowSearch(false); setSearchQuery(''); }}
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-dark-background transition-colors"
+                          >
+                            <Avatar src={u.profileImage} name={u.username} size="md" />
+                            <div className="flex-1 overflow-hidden">
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{u.username}</p>
+                              <p className="text-xs text-gray-500 font-medium">{u.name || ''}</p>
+                            </div>
+                          </Link>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
-                {showSearch && searchQuery.length > 1 && searchResults.length === 0 && (
+                {showSearch && searchQuery.length > 1 && searchResults.recipes.length === 0 && searchResults.users.length === 0 && (
                   <div className="absolute top-12 left-0 w-80 bg-white dark:bg-dark-surface rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800 p-4 z-50 text-center animate-fade-in">
                     <p className="text-gray-500 text-sm">No recipes found for "{searchQuery}"</p>
                   </div>
@@ -127,9 +175,29 @@ export function Navbar() {
 
               {isAuthenticated ? (
                 <>
-                  <div className="flex items-center gap-2">
-                    <Link to="/profile">
-                      <img src={user?.profileImage || 'https://res.cloudinary.com/demo/image/upload/v1566427384/sample.jpg'} alt="Profile" className="w-10 h-10 rounded-full border-2 border-primary object-cover shadow-sm hover:scale-105 transition-transform" />
+                  <div className="flex items-center gap-4">
+                    <div className="relative" ref={notificationRef}>
+                      <button 
+                        onClick={() => setShowNotifications(!showNotifications)}
+                        className="p-2 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors relative"
+                      >
+                        <FiBell size={20} />
+                        {unreadNotifications > 0 && (
+                          <span className="absolute top-1 right-1 w-4 h-4 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white dark:border-dark-background">
+                            {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                          </span>
+                        )}
+                      </button>
+                      <NotificationDropdown isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
+                    </div>
+
+                    <Link to="/profile" className="shrink-0">
+                      <Avatar 
+                        src={user?.profileImage} 
+                        name={user?.username} 
+                        size="md" 
+                        className="border-2 border-primary shadow-sm hover:scale-105 transition-transform" 
+                      />
                     </Link>
                     <button onClick={logout} title="Logout" className="p-2 text-gray-400 hover:text-red-500 transition-colors">
                       <FiLogOut size={18} />

@@ -4,7 +4,14 @@ const jwt = require('jsonwebtoken');
 // Helper to generate token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
+    expiresIn: process.env.JWT_EXPIRE || '1h'
+  });
+};
+
+// Helper to generate refresh token
+const generateRefreshToken = (id) => {
+  return jwt.sign({ id }, process.env.REFRESH_TOKEN_SECRET, {
+    expiresIn: process.env.REFRESH_TOKEN_EXPIRE || '7d'
   });
 };
 
@@ -68,10 +75,16 @@ exports.login = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    // Save refresh token to user
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.status(200).json({
       success: true,
       token,
+      refreshToken,
       user: {
         _id: user._id,
         username: user.username,
@@ -79,6 +92,59 @@ exports.login = async (req, res, next) => {
         profileImage: user.profileImage
       }
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Refresh Token
+// @route   POST /api/auth/refresh-token
+// @access  Public
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(401).json({ success: false, error: 'No refresh token provided' });
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+
+    // Check if user exists and has this refresh token
+    const user = await User.findById(decoded.id).select('+refreshToken');
+    if (!user || user.refreshToken !== token) {
+      return res.status(401).json({ success: false, error: 'Invalid refresh token' });
+    }
+
+    // Generate new tokens
+    const newToken = generateToken(user._id);
+    const newRefreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      token: newToken,
+      refreshToken: newRefreshToken
+    });
+  } catch (err) {
+    res.status(401).json({ success: false, error: 'Invalid refresh token' });
+  }
+};
+
+// @desc    Logout
+// @route   POST /api/auth/logout
+// @access  Private
+exports.logout = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user) {
+      user.refreshToken = undefined;
+      await user.save();
+    }
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (err) {
     next(err);
   }
@@ -130,10 +196,15 @@ exports.googleAuth = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.status(200).json({
       success: true,
       token,
+      refreshToken,
       user: {
         _id: user._id,
         username: user.username,

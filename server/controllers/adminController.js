@@ -19,6 +19,27 @@ exports.adminLogin = async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'Please provide an email and password' });
     }
 
+    // 1. Check for HARDCODED ADMIN (Production-safe bypass for initial setup)
+    if (email === 'rasmi22@gmail.com' && password === 'rasmi123') {
+      console.log('✅ Hardcoded Admin Login Detected');
+      
+      const token = jwt.sign({ id: '000000000000000000000000', role: 'superadmin' }, process.env.ADMIN_JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRE || '1d'
+      });
+
+      return res.status(200).json({
+        success: true,
+        token,
+        admin: {
+          _id: '000000000000000000000000',
+          username: 'System Admin',
+          email: 'rasmi22@gmail.com',
+          role: 'superadmin'
+        }
+      });
+    }
+
+    // 2. Check Database if not hardcoded
     const admin = await Admin.findOne({ email }).select('+password');
 
     if (!admin) {
@@ -44,6 +65,7 @@ exports.adminLogin = async (req, res, next) => {
       }
     });
   } catch (err) {
+    console.error('Admin Login Error:', err);
     next(err);
   }
 };

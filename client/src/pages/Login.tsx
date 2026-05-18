@@ -1,18 +1,33 @@
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
 import { Button } from '../components/ui/Button';
-
 import { Link, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
+import { useState } from 'react';
+import { useAuthStore } from '../store/useAuthStore';
+import api from '../api/axios';
+import toast from 'react-hot-toast';
 
 export default function Login() {
-  const { login } = useAppContext();
+  const { login } = useAuthStore();
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login();
-    navigate('/profile');
+    setIsLoading(true);
+    try {
+      const res = await api.post('/auth/login', formData);
+      if (res.data.success) {
+        toast.success('Welcome back!');
+        login(res.data.user, res.data.token);
+        navigate('/profile');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -47,11 +62,13 @@ export default function Login() {
             <div className="space-y-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/70">
-                  <FiMail />
+                   <FiMail />
                 </div>
                 <input 
                   type="email" 
                   placeholder="Email Address" 
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                   required 
                   className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white placeholder-white/50 transition-all"
                 />
@@ -59,11 +76,13 @@ export default function Login() {
               
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white/70">
-                  <FiLock />
+                   <FiLock />
                 </div>
                 <input 
                   type="password" 
                   placeholder="Password" 
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
                   required 
                   className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/20 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-white placeholder-white/50 transition-all"
                 />
@@ -76,7 +95,12 @@ export default function Login() {
               </a>
             </div>
 
-            <Button type="submit" className="w-full h-14 text-lg mt-4 shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]" rightIcon={<FiArrowRight />}>
+            <Button 
+              type="submit" 
+              isLoading={isLoading}
+              className="w-full h-14 text-lg mt-4 shadow-[0_0_20px_rgba(255,69,0,0.4)] hover:shadow-[0_0_30px_rgba(255,69,0,0.6)]" 
+              rightIcon={<FiArrowRight />}
+            >
               Sign In
             </Button>
           </form>
